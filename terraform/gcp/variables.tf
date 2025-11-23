@@ -15,18 +15,6 @@ variable "project_name" {
   default     = "ecommerce"
 }
 
-variable "aws_access_key_id" {
-  description = "AWS access key for DynamoDB access from Flink"
-  type        = string
-  sensitive   = true
-}
-
-variable "aws_secret_access_key" {
-  description = "AWS secret access key for DynamoDB access from Flink"
-  type        = string
-  sensitive   = true
-}
-
 variable "kafka_bootstrap_servers" {
   description = "AWS MSK Kafka bootstrap servers"
   type        = string

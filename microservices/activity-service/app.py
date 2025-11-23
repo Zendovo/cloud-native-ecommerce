@@ -10,6 +10,10 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from prometheus_flask_exporter import PrometheusMetrics
+
+metrics = PrometheusMetrics(app)
+
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "ecom-raw-events")
 
@@ -31,25 +35,6 @@ def get_kafka_producer():
             logger.error(f"Failed to initialize Kafka producer: {e}")
             producer = None
     return producer
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "healthy"}), 200
-
-
-@app.route("/ready", methods=["GET"])
-def ready():
-    try:
-        kafka_producer = get_kafka_producer()
-        if kafka_producer is None:
-            return jsonify(
-                {"status": "not ready", "reason": "Kafka not connected"}
-            ), 503
-        return jsonify({"status": "ready"}), 200
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        return jsonify({"status": "not ready"}), 503
 
 
 @app.route("/event", methods=["POST"])

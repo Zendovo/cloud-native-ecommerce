@@ -1,0 +1,20 @@
+# Individual Contribution Video Link Placeholder
+# Replace STUDENT_ID with your actual ID and the URL with your uploaded video link.
+
+STUDENT_ID=your-student-id
+VIDEO_LINK=https://example.com/your-individual-contribution-video
+
+# Instructions:
+# 1. The video must include your voice explaining the sections of code or configuration YOU implemented.
+# 2. Ensure your STUDENT_ID is visible in the terminal or editor during the recording.
+# 3. Walk through:
+#    - Relevant Terraform modules or changes you authored
+#    - Microservice code you wrote or modified
+#    - Kubernetes/GitOps pieces you contributed
+#    - Any observability or load testing aspects you handled
+# 4. Keep it clear and concise (suggested length: 5–10 minutes).
+# 5. After uploading, replace VIDEO_LINK above with the final URL.
+
+# Example (remove after updating):
+# STUDENT_ID=ABC123
+# VIDEO_LINK=https://youtu.be/dQw4w9WgXcQ

@@ -8,20 +8,14 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from prometheus_flask_exporter import PrometheusMetrics
+
+metrics = PrometheusMetrics(app)
+
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://customer-service:8080")
 PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-catalog:8080")
 ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://order-service:8080")
 ACTIVITY_SERVICE_URL = os.getenv("ACTIVITY_SERVICE_URL", "http://activity-service:8080")
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "healthy"}), 200
-
-
-@app.route("/ready", methods=["GET"])
-def ready():
-    return jsonify({"status": "ready"}), 200
 
 
 @app.route("/products", methods=["GET"])
@@ -131,16 +125,13 @@ def get_analytics(product_id):
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(minutes=5)
 
+        from boto3.dynamodb.conditions import Key
+
         response = table.query(
-            KeyConditionExpression="product_id = :pid AND window_start >= :start",
-            ExpressionAttributeValues={
-                ":pid": product_id,
-                ":start": start_time.isoformat(),
-            },
+            KeyConditionExpression=Key("product_id").eq(product_id),
             ScanIndexForward=False,
             Limit=10,
         )
-
         return jsonify(
             {"product_id": product_id, "analytics": response.get("Items", [])}
         ), 200

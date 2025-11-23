@@ -5,6 +5,10 @@ metadata:
   namespace: ecommerce
   labels:
     app: api-gateway
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
 spec:
   type: LoadBalancer
   ports:
@@ -59,18 +63,7 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
+
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

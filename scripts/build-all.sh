@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile arnavkirana 2>/dev/null || echo "")
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 SERVICES=(
@@ -68,7 +68,10 @@ done
 
 echo -e "${GREEN}=== All microservices built and pushed successfully! ===${NC}"
 echo ""
-echo "Next steps:"
-echo "1. Update k8s manifests with ECR registry: ${ECR_REGISTRY}"
-echo "2. Deploy using ArgoCD or kubectl apply -f k8s/"
-echo "3. Run load tests: cd load-testing && k6 run load-test.js"
+echo "Next steps (GitOps workflow):"
+echo "1. Ensure k8s manifests reference ${ECR_REGISTRY}; commit & push."
+echo "2. Verify ArgoCD Applications show status 'Synced' in argocd namespace."
+echo "3. Submit Flink job (already handled in quickstart script) or re-run Step 9 if needed."
+echo "4. Run load tests: cd load-testing && API_GATEWAY_URL=http://<lb_host> k6 run load-test.js"
+echo "5. Observe HPA scaling: watch kubectl get hpa -n ecommerce"
+echo "6. Provide DESIGN.md, <idno>_video.txt, demo_video.txt for assignment deliverables."

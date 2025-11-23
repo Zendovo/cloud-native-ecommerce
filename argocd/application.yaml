@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ecommerce-platform
+  name: cloud-native-ecommerce
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_USERNAME/ecommerce-platform.git
+    repoURL: https://github.com/zendovo/cloud-native-ecommerce.git
     targetRevision: main
     path: k8s
   destination:
@@ -34,7 +34,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_USERNAME/ecommerce-platform.git
+    repoURL: https://github.com/zendovo/cloud-native-ecommerce.git
     targetRevision: main
     path: observability
   destination:

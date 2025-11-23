@@ -5,7 +5,16 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
+    }
   }
+
 }
 
 provider "aws" {
@@ -252,6 +261,11 @@ resource "aws_msk_cluster" "main" {
         volume_size = 100
       }
     }
+  }
+
+  configuration_info {
+    arn      = aws_msk_configuration.auto_create_topics.arn
+    revision = aws_msk_configuration.auto_create_topics.latest_revision
   }
 
   encryption_info {

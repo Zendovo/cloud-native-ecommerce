@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ecommerce
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ecommerce-overview.json: |
+    {
+      "id": null,
+      "uid": "ecommerce-overview",
+      "title": "Ecommerce Overview",
+      "tags": ["ecommerce", "overview"],
+      "timezone": "browser",
+      "schemaVersion": 36,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "API Gateway RPS (5m)",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total{pod=~\"api-gateway.*\"}[5m]))",
+              "legendFormat": "RPS",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "stat",
+          "title": "Activity Service RPS (5m)",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total{pod=~\"activity-service.*\"}[5m]))",
+              "legendFormat": "RPS",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "gauge",
+          "title": "Error Rate %",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+            "targets": [
+              {
+                "expr": "100 * (sum(rate(flask_http_request_exceptions_total[5m])) / sum(rate(flask_http_request_total[5m])))",
+                "legendFormat": "Errors %",
+                "refId": "A"
+              }
+            ],
+            "max": 100,
+            "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "Request Latency p95 (s)",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "lines": true,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(flask_http_request_duration_seconds_bucket[5m])))",
+              "legendFormat": "p95",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "Pod Restarts (per 5m)",
+          "gridPos": { "x": 0, "y": 4, "w": 8, "h": 6 },
+          "targets": [
+            {
+              "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"$namespace\"}[5m])",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "API Gateway CPU (cores)",
+          "gridPos": { "x": 8, "y": 4, "w": 8, "h": 6 },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"api-gateway.*\", container!=\"POD\"}[5m]))",
+              "legendFormat": "api-gateway",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "API Gateway Memory (MiB)",
+          "gridPos": { "x": 16, "y": 4, "w": 8, "h": 6 },
+          "targets": [
+            {
+              "expr": "sum(container_memory_usage_bytes{pod=~\"api-gateway.*\", container!=\"POD\"}) / 1024 / 1024",
+              "legendFormat": "api-gateway",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "Kafka Event Ingress (Activity Service)",
+          "gridPos": { "x": 0, "y": 10, "w": 12, "h": 6 },
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total{pod=~\"activity-service.*\", method=\"POST\", path=\"/event\"}[5m]))",
+              "legendFormat": "events/s",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        },
+        {
+          "type": "graph",
+          "title": "Windowed Analytics Results (Writes p/min)",
+          "gridPos": { "x": 12, "y": 10, "w": 12, "h": 6 },
+          "description": "Approximate number of aggregated results forwarded (derived from results topic publishes)",
+          "targets": [
+            {
+              "expr": "sum(rate(flask_http_request_total{path=\"/analytics/product\"}[5m]))",
+              "legendFormat": "queries/s",
+              "refId": "A"
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" },
+            "refresh": 2,
+            "query": "label_values(kube_pod_info, namespace)",
+            "current": {
+              "text": "ecommerce",
+              "value": "ecommerce"
+            }
+          }
+        ]
+      },
+      "time": { "from": "now-1h", "to": "now" }
+    }

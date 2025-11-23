@@ -145,13 +145,3 @@ resource "google_dataproc_cluster" "analytics" {
     google_storage_bucket.dataproc_staging
   ]
 }
-
-resource "google_secret_manager_secret" "aws_credentials" {
-  secret_id = "${var.project_name}-aws-credentials"
-
-  replication {
-    auto {}
-  }
-
-  depends_on = [google_project_service.dataproc]
-}

@@ -8,6 +8,11 @@ from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
+
+from prometheus_flask_exporter import PrometheusMetrics
+
+metrics = PrometheusMetrics(app)
+
 logger = logging.getLogger(__name__)
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -50,22 +55,6 @@ def init_db():
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "healthy"}), 200
-
-
-@app.route("/ready", methods=["GET"])
-def ready():
-    try:
-        conn = get_db_connection()
-        conn.close()
-        return jsonify({"status": "ready"}), 200
-    except Exception as e:
-        logger.error(f"Database not ready: {e}")
-        return jsonify({"status": "not ready"}), 503
 
 
 @app.route("/orders", methods=["POST"])

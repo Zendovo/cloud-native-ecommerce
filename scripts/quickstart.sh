@@ -1,19 +1,10 @@
 #!/bin/bash
-
 set -e
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-
-echo -e "${BLUE}"
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║   E-Commerce Real-Time Analytics Platform - Quick Start   ║"
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo -e "${NC}\n"
-
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 
 command -v terraform >/dev/null 2>&1 || { echo -e "${RED}Error: terraform not found${NC}"; exit 1; }
@@ -23,7 +14,7 @@ command -v kubectl >/dev/null 2>&1 || { echo -e "${RED}Error: kubectl not found$
 command -v docker >/dev/null 2>&1 || { echo -e "${RED}Error: docker not found${NC}"; exit 1; }
 command -v helm >/dev/null 2>&1 || { echo -e "${RED}Error: helm not found${NC}"; exit 1; }
 
-echo -e "${GREEN}✓ All prerequisites installed${NC}\n"
+echo -e "${GREEN} All prerequisites installed${NC}\n"
 
 read -p "Enter AWS Region [us-east-1]: " AWS_REGION
 AWS_REGION=${AWS_REGION:-us-east-1}
@@ -116,31 +107,16 @@ chmod +x scripts/build-all.sh
 
 echo -e "${GREEN}✓ Docker images built and pushed${NC}"
 
-echo -e "\n${YELLOW}Step 6/10: Installing ArgoCD...${NC}"
-kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+echo -e "\n${YELLOW}Step 6/10: GitOps (ArgoCD) Setup Skipped${NC}"
+echo "ArgoCD is provisioned via Terraform (helm_release). No manual installation executed."
+echo "To retrieve initial admin password (optional):"
+echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 
-echo "Waiting for ArgoCD to be ready..."
-kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
-
-ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-echo -e "${GREEN}✓ ArgoCD installed${NC}"
-echo -e "${BLUE}ArgoCD Password: ${ARGOCD_PASSWORD}${NC}"
-
-echo -e "\n${YELLOW}Step 7/10: Deploying applications...${NC}"
-
-kubectl apply -f k8s/namespace-config.yaml
-
-kubectl apply -f k8s/api-gateway.yaml
-kubectl apply -f k8s/customer-service.yaml
-kubectl apply -f k8s/product-catalog.yaml
-kubectl apply -f k8s/order-service.yaml
-kubectl apply -f k8s/activity-service.yaml
-
-echo "Waiting for pods to be ready..."
-kubectl wait --for=condition=ready pod -l app=api-gateway -n ecommerce --timeout=300s || true
-
-echo -e "${GREEN}✓ Applications deployed${NC}"
+echo -e "\n${YELLOW}Step 7/10: Deploying applications (GitOps)${NC}"
+echo "Skipping direct manual deployment. ArgoCD will sync the repository and create/update all Kubernetes objects."
+echo "You can monitor sync status:"
+echo "  kubectl get applications -n argocd"
+echo "  kubectl get pods -n ecommerce"
 
 echo -e "\n${YELLOW}Step 8/10: Deploying observability stack...${NC}"
 cd observability
@@ -201,7 +177,7 @@ echo -e "  Dataproc Cluster: ${DATAPROC_CLUSTER}"
 echo ""
 
 echo -e "${BLUE}Next Steps:${NC}"
-echo -e "  1. Test API: curl http://${API_GATEWAY_URL}/health"
+echo -e "  1. Test API: curl http://${API_GATEWAY_URL}/products"
 echo -e "  2. Run load tests: cd load-testing && API_GATEWAY_URL=http://${API_GATEWAY_URL} k6 run load-test.js"
 echo -e "  3. Monitor HPA: watch kubectl get hpa -n ecommerce"
 echo -e "  4. View logs: kubectl logs -f -l app=api-gateway -n ecommerce"

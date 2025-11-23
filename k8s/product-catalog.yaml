@@ -5,6 +5,10 @@ metadata:
   namespace: ecommerce
   labels:
     app: product-catalog
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   ports:
@@ -60,15 +64,3 @@ spec:
             limits:
               cpu: 300m
               memory: 256Mi
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
