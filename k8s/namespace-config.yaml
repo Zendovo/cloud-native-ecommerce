@@ -23,4 +23,4 @@ type: Opaque
 data:
   # Base64 encoded values - replace with actual values
   # echo -n 'your-password' | base64
-  db_password: ZHZtZHZtZHZt
+  db_password: ZG1kdm1kdm0=
