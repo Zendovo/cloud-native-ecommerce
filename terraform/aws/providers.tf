@@ -66,6 +66,28 @@ resource "aws_ecr_repository" "services" {
   }
 }
 
+# ECR Repository Policy to allow public pull access
+resource "aws_ecr_repository_policy" "services_public_access" {
+  for_each   = toset(local.ecr_services)
+  repository = aws_ecr_repository.services[each.key].name
+
+  policy = jsonencode({
+    Version = "2008-10-17"
+    Statement = [
+      {
+        Sid       = "AllowPublicPull"
+        Effect    = "Allow"
+        Principal = "*"
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability"
+        ]
+      }
+    ]
+  })
+}
+
 #########################################
 # MSK Configuration (Auto-create topics) #
 #########################################
