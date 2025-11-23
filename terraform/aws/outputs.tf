@@ -29,8 +29,13 @@ output "s3_bucket_name" {
 }
 
 output "msk_bootstrap_brokers" {
-  description = "MSK Kafka bootstrap brokers"
+  description = "MSK Kafka bootstrap brokers (private)"
   value       = aws_msk_cluster.main.bootstrap_brokers
+}
+
+output "msk_bootstrap_brokers_public" {
+  description = "MSK Kafka public bootstrap brokers"
+  value       = aws_msk_cluster.main.bootstrap_brokers_public_sasl_iam
 }
 
 output "vpc_id" {

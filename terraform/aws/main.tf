@@ -237,7 +237,14 @@ resource "aws_security_group" "msk" {
     from_port   = 9092
     to_port     = 9092
     protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9094
+    to_port     = 9094
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -255,12 +262,18 @@ resource "aws_msk_cluster" "main" {
 
   broker_node_group_info {
     instance_type   = "kafka.t3.small"
-    client_subnets  = aws_subnet.private[*].id
+    client_subnets  = aws_subnet.public[*].id
     security_groups = [aws_security_group.msk.id]
 
     storage_info {
       ebs_storage_info {
         volume_size = 100
+      }
+    }
+
+    connectivity_info {
+      public_access {
+        type = "SERVICE_PROVIDED_EIPS"
       }
     }
   }
@@ -272,8 +285,8 @@ resource "aws_msk_cluster" "main" {
 
   encryption_info {
     encryption_in_transit {
-      client_broker = "TLS_PLAINTEXT"
-      in_cluster    = true
+      client_broker = "PLAINTEXT"
+      in_cluster    = false
     }
   }
 }
