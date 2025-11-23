@@ -38,6 +38,7 @@ spec:
       containers:
         - name: activity-service
           image: 503561412351.dkr.ecr.us-east-1.amazonaws.com/activity-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
