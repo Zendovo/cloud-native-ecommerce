@@ -137,12 +137,19 @@ if command -v mvn >/dev/null 2>&1; then
     echo "Uploading to GCS..."
     gsutil cp target/analytics-job-*.jar gs://${FLINK_BUCKET}/analytics-job.jar
 
-    echo "Submitting to Dataproc..."
+    echo "Submitting to Dataproc with environment variables..."
+    echo "  Kafka Brokers: ${KAFKA_BROKERS}"
+    echo "  DynamoDB Table: ${DYNAMODB_TABLE}"
+    echo "  AWS Region: ${AWS_REGION}"
+
     gcloud dataproc jobs submit flink \
         --cluster=${DATAPROC_CLUSTER} \
         --region=${GCP_REGION} \
         --jar=gs://${FLINK_BUCKET}/analytics-job.jar \
-        --class=com.ecommerce.analytics.AnalyticsJob || echo "Flink job submission failed (optional)"
+        --class=com.ecommerce.analytics.AnalyticsJob \
+        --properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" \
+        && echo -e "${GREEN}✓ Flink job submitted successfully${NC}" \
+        || echo -e "${YELLOW}⚠ Flink job submission failed (optional)${NC}"
 else
     echo -e "${YELLOW}Maven not found, skipping Flink job build${NC}"
 fi
