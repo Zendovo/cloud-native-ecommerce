@@ -88,7 +88,7 @@ def create_product():
         return jsonify(dict(product)), 201
     except Exception as e:
         logger.error(f"Error creating product: {e}")
-        return jsonify({"error": "Failed to create product"}), 500
+        return jsonify({"error": f"Failed to create product. {e}"}), 500
 
 
 @app.route("/products/<int:product_id>", methods=["GET"])
