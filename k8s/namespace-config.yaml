@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+  namespace: ecommerce
+data:
+  db_host: "ecommerce-db.xxxxx.us-east-1.rds.amazonaws.com"
+  kafka_bootstrap_servers: "b-1.ecommerce-kafka.xxxxx.c2.kafka.us-east-1.amazonaws.com:9092,b-2.ecommerce-kafka.xxxxx.c2.kafka.us-east-1.amazonaws.com:9092"
+  dynamodb_table: "ecommerce-analytics"
+  aws_region: "us-east-1"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-secrets
+  namespace: ecommerce
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual values
+  # echo -n 'your-password' | base64
+  db_password: cGFzc3dvcmQxMjM=
