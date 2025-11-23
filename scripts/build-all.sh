@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile arnavkirana 2>/dev/null || echo "")
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile default 2>/dev/null || echo "")
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 SERVICES=(

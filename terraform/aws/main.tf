@@ -12,13 +12,15 @@ terraform {
     helm = {
       source  = "hashicorp/helm"
       version = "~> 2.12"
+
     }
   }
 
 }
 
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = "default"
 }
 
 resource "aws_vpc" "main" {
