@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: product-catalog
-          image: 420053132841.dkr.ecr.us-east-1.amazonaws.com/product-catalog:latest
+          image: 503561412351.dkr.ecr.us-east-1.amazonaws.com/product-catalog:latest
           ports:
             - containerPort: 8080
           env:
