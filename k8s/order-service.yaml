@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: <YOUR_ECR_REGISTRY>/order-service:latest
+          image: 420053132841.dkr.ecr.us-east-1.amazonaws.com/order-service:latest
           ports:
             - containerPort: 8080
           env:

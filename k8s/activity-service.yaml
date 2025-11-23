@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: activity-service
-          image: <YOUR_ECR_REGISTRY>/activity-service:latest
+          image: 420053132841.dkr.ecr.us-east-1.amazonaws.com/activity-service:latest
           ports:
             - containerPort: 8080
           env:

@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: customer-service
-          image: <YOUR_ECR_REGISTRY>/customer-service:latest
+          image: 420053132841.dkr.ecr.us-east-1.amazonaws.com/customer-service:latest
           ports:
             - containerPort: 8080
           env:
