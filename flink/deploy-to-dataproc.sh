@@ -23,6 +23,8 @@ gcloud dataproc jobs submit flink \
     -- \
     --kafka-bootstrap-servers=${KAFKA_BOOTSTRAP_SERVERS} \
     --input-topic=ecom-raw-events \
-    --output-topic=ecom-analytics-results
+    --output-topic=ecom-analytics-results \
+    --dynamodb-table=ecommerce-analytics \
+    --aws-region=us-east-1
 
 echo "Flink job submitted successfully!"
