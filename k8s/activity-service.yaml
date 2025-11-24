@@ -43,10 +43,7 @@ spec:
             - containerPort: 8080
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              valueFrom:
-                configMapKeyRef:
-                  name: ecommerce-config
-                  key: kafka_bootstrap_servers
+              value: b-1.ecommercekafka.e2v0sz.c24.kafka.us-east-1.amazonaws.com:9092
             - name: KAFKA_TOPIC
               value: "ecom-raw-events"
           resources:
