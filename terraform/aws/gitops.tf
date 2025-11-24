@@ -85,80 +85,65 @@ resource "helm_release" "argocd" {
 }
 
 #############################################
-# Define ArgoCD Applications using kubernetes_manifest
+# ArgoCD Applications via argocd-apps Helm chart
 #############################################
 
-resource "kubernetes_manifest" "argocd_app_ecommerce" {
-  manifest = {
-    "apiVersion" = "argoproj.io/v1alpha1"
-    "kind"       = "Application"
-    "metadata" = {
-      "name"      = "cloud-native-ecommerce"
-      "namespace" = kubernetes_namespace.argocd.metadata[0].name
-    }
-    "spec" = {
-      "destination" = {
-        "namespace" = "ecommerce"
-        "server"    = "https://kubernetes.default.svc"
-      }
-      "project" = "default"
-      "source" = {
-        "path"           = "k8s"
-        "repoURL"        = var.git_repo_url
-        "targetRevision" = var.git_repo_revision
-      }
-      "syncPolicy" = {
-        "automated" = {
-          "prune"    = true
-          "selfHeal" = true
+resource "helm_release" "argocd_apps" {
+  name       = "argocd-apps"
+  namespace  = kubernetes_namespace.argocd.metadata[0].name
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argocd-apps"
+
+  values = [
+    yamlencode({
+      applications = [
+        {
+          name      = "cloud-native-ecommerce"
+          namespace = "argocd"
+          project   = "default"
+          source = {
+            repoURL        = var.git_repo_url
+            targetRevision = var.git_repo_revision
+            path           = "k8s"
+          }
+          destination = {
+            server    = "https://kubernetes.default.svc"
+            namespace = "ecommerce"
+          }
+          syncPolicy = {
+            automated = {
+              prune    = true
+              selfHeal = true
+            }
+            syncOptions = ["CreateNamespace=true"]
+          }
+        },
+        {
+          name      = "ecommerce-observability"
+          namespace = "argocd"
+          project   = "default"
+          source = {
+            repoURL        = var.git_repo_url
+            targetRevision = var.git_repo_revision
+            path           = "observability"
+          }
+          destination = {
+            server    = "https://kubernetes.default.svc"
+            namespace = "monitoring"
+          }
+          syncPolicy = {
+            automated = {
+              prune    = true
+              selfHeal = true
+            }
+            syncOptions = ["CreateNamespace=true"]
+          }
         }
-        "syncOptions" = [
-          "CreateNamespace=true",
-        ]
-      }
-    }
-  }
+      ]
+    })
+  ]
 
   depends_on = [
     helm_release.argocd
   ]
 }
-
-resource "kubernetes_manifest" "argocd_app_observability" {
-  manifest = {
-    "apiVersion" = "argoproj.io/v1alpha1"
-    "kind"       = "Application"
-    "metadata" = {
-      "name"      = "ecommerce-observability"
-      "namespace" = kubernetes_namespace.argocd.metadata[0].name
-    }
-    "spec" = {
-      "destination" = {
-        "namespace" = "monitoring"
-        "server"    = "https://kubernetes.default.svc"
-      }
-      "project" = "default"
-      "source" = {
-        "path"           = "observability"
-        "repoURL"        = var.git_repo_url
-        "targetRevision" = var.git_repo_revision
-      }
-      "syncPolicy" = {
-        "automated" = {
-          "prune"    = true
-          "selfHeal" = true
-        }
-        "syncOptions" = [
-          "CreateNamespace=true",
-        ]
-      }
-    }
-  }
-
-  depends_on = [
-    helm_release.argocd
-  ]
-}
-
-
-
