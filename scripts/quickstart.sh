@@ -38,7 +38,7 @@ if [ -z "$DB_PASSWORD" ]; then
     exit 1
 fi
 
-echo -e "\n${YELLOW}Step 1/10: Deploying AWS Infrastructure...${NC}"
+echo -e "\n${YELLOW}Phase 1 / Step 1: Deploying AWS core infrastructure (VPC, EKS, RDS, MSK, S3, DynamoDB)...${NC}"
 cd terraform/aws
 
 cat > terraform.tfvars <<EOF
@@ -59,7 +59,7 @@ EKS_CLUSTER=$(terraform output -raw eks_cluster_name)
 echo -e "${GREEN}✓ AWS Infrastructure deployed${NC}"
 cd ../..
 
-echo -e "\n${YELLOW}Step 2/10: Deploying GCP Infrastructure...${NC}"
+echo -e "\n${YELLOW}Phase 1 / Step 2: Deploying GCP analytics infrastructure (Dataproc + buckets)...${NC}"
 cd terraform/gcp
 
 AWS_ACCESS_KEY=$(aws configure get aws_access_key_id)
@@ -83,11 +83,23 @@ FLINK_BUCKET=$(terraform output -raw flink_jobs_bucket)
 echo -e "${GREEN}✓ GCP Infrastructure deployed${NC}"
 cd ../..
 
-echo -e "\n${YELLOW}Step 3/10: Configuring kubectl...${NC}"
+echo -e "\n${YELLOW}Phase 1 / Step 3: Configuring kubectl and waiting for EKS control plane & nodes...${NC}"
 aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION} --profile ${AWS_PROFILE}
 echo -e "${GREEN}✓ kubectl configured${NC}"
+echo -e "${YELLOW}Waiting for worker nodes to become Ready (timeout 8m)...${NC}"
+ATTEMPTS=0
+until kubectl get nodes 2>/dev/null | grep -q ' Ready'; do
+  ATTEMPTS=$((ATTEMPTS+1))
+  if [ $ATTEMPTS -ge 32 ]; then
+    echo -e "${RED}EKS nodes did not become Ready in time. You can re-run this script once nodes appear.${NC}"
+    break
+  fi
+  echo "  Nodes not ready yet... retry ${ATTEMPTS}/32"
+  sleep 15
+done
+kubectl get nodes || true
 
-echo -e "\n${YELLOW}Step 4/10: Updating Kubernetes manifests...${NC}"
+echo -e "\n${YELLOW}Phase 1 / Step 4: Preparing Kubernetes manifests with real endpoints & registry...${NC}"
 
 sed -i.bak "s|ecommerce-db.xxxxx.us-east-1.rds.amazonaws.com|${RDS_ENDPOINT}|g" k8s/namespace-config.yaml
 sed -i.bak "s|b-1.ecommerce-kafka.xxxxx.*amazonaws.com:9092.*|${KAFKA_BROKERS}\"|g" k8s/namespace-config.yaml
@@ -104,18 +116,25 @@ done
 
 echo -e "${GREEN}✓ Kubernetes manifests updated${NC}"
 
-echo -e "\n${YELLOW}Step 5/10: Building and pushing Docker images...${NC}"
+echo -e "\n${YELLOW}Phase 1 / Step 5: Building and pushing Docker images to ECR...${NC}"
 chmod +x scripts/build-all.sh
 ./scripts/build-all.sh
 
 echo -e "${GREEN}✓ Docker images built and pushed${NC}"
 
-echo -e "\n${YELLOW}Step 6/10: GitOps (ArgoCD) Setup Skipped${NC}"
-echo "ArgoCD is provisioned via Terraform (helm_release). No manual installation executed."
-echo "To retrieve initial admin password (optional):"
+echo -e "\n${YELLOW}Phase 2 / Step 1: Installing ArgoCD (GitOps) via Terraform targeted apply...${NC}"
+cd terraform/aws
+echo -e "${YELLOW}Applying helm releases for ArgoCD...${NC}"
+terraform apply -auto-approve -target=helm_release.argocd -target=helm_release.argocd_apps
+echo -e "${GREEN}✓ ArgoCD helm releases applied${NC}"
+cd ../..
+echo -e "${YELLOW}Waiting for ArgoCD server pod to be Ready...${NC}"
+kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || echo -e "${YELLOW}ArgoCD server not ready yet (continue)${NC}"
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+echo "To retrieve initial admin password manually if empty:"
 echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 
-echo -e "\n${YELLOW}Step 7/10: Deploying applications (GitOps)${NC}"
+echo -e "\n${YELLOW}Phase 2 / Step 2: Application deployment via ArgoCD sync (passive, no kubectl apply)...${NC}"
 echo "Skipping direct manual deployment. ArgoCD will sync the repository and create/update all Kubernetes objects."
 echo "You can monitor sync status:"
 echo "  kubectl get applications -n argocd"
