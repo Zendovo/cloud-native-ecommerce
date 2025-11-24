@@ -85,63 +85,81 @@ resource "helm_release" "argocd" {
 }
 
 #############################################
-# ArgoCD Applications via argocd-apps Helm chart
+# ArgoCD Applications via Kubernetes manifests
 #############################################
 
-resource "helm_release" "argocd_apps" {
-  name       = "argocd-apps"
-  namespace  = kubernetes_namespace.argocd.metadata[0].name
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argocd-apps"
-
-  values = [
-    yamlencode({
-      applications = [
-        {
-          name        = "cloud-native-ecommerce"
-          finalizers  = ["resources-finalizer.argocd.argoproj.io"]
-          project     = "default"
-          source = {
-            repoURL        = var.git_repo_url
-            targetRevision = var.git_repo_revision
-            path           = "k8s"
-          }
-          destination = {
-            server    = "https://kubernetes.default.svc"
-            namespace = "ecommerce"
-          }
-          syncPolicy = {
-            automated = {
-              prune    = true
-              selfHeal = true
-            }
-            syncOptions = ["CreateNamespace=true"]
-          }
-        },
-        {
-          name        = "ecommerce-observability"
-          finalizers  = ["resources-finalizer.argocd.argoproj.io"]
-          project     = "default"
-          source = {
-            repoURL        = var.git_repo_url
-            targetRevision = var.git_repo_revision
-            path           = "observability"
-          }
-          destination = {
-            server    = "https://kubernetes.default.svc"
-            namespace = "monitoring"
-          }
-          syncPolicy = {
-            automated = {
-              prune    = true
-              selfHeal = true
-            }
-            syncOptions = ["CreateNamespace=true"]
-          }
-        }
+resource "kubernetes_manifest" "argocd_app_ecommerce" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "cloud-native-ecommerce"
+      namespace = kubernetes_namespace.argocd.metadata[0].name
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
       ]
-    })
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = var.git_repo_url
+        targetRevision = var.git_repo_revision
+        path           = "k8s"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "ecommerce"
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd
   ]
+}
+
+resource "kubernetes_manifest" "argocd_app_observability" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "ecommerce-observability"
+      namespace = kubernetes_namespace.argocd.metadata[0].name
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = var.git_repo_url
+        targetRevision = var.git_repo_revision
+        path           = "observability"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "monitoring"
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+  }
 
   depends_on = [
     helm_release.argocd
