@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from sys import api_version
 
 from flask import Flask, jsonify, request
 from kafka import KafkaProducer
@@ -28,6 +29,7 @@ def get_kafka_producer():
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS.split(","),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 acks="all",
+                api_version=(3,5,1),
                 retries=3,
             )
             logger.info(f"Kafka producer initialized: {KAFKA_BOOTSTRAP_SERVERS}")
