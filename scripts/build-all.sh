@@ -12,10 +12,10 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --pro
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 SERVICES=(
-    "api-gateway"
-    "customer-service"
-    "product-catalog"
-    "order-service"
+    # "api-gateway"
+    # "customer-service"
+    # "product-catalog"
+    # "order-service"
     "activity-service"
 )
 

@@ -47,7 +47,7 @@ def get_kafka_producer():
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 security_protocol="SASL_SSL",
                 sasl_mechanism="OAUTHBEARER",
-                sasl_oauth_token_provider=oauth_cb,
+                sasl_oauth_token_provider=token_provider,
                 acks="all",
                 retries=5,
                 max_block_ms=60000,
