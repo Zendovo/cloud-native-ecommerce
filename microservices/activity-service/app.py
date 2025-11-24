@@ -48,6 +48,7 @@ def get_kafka_producer():
                 reconnect_backoff_max_ms=5000,
                 metadata_max_age_ms=300000,
                 connections_max_idle_ms=540000,
+                api_version=(3, 5, 1),
             )
             logger.info(
                 f"Kafka producer initialized successfully with IAM auth: {KAFKA_BOOTSTRAP_SERVERS}"
