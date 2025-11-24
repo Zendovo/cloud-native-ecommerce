@@ -9,7 +9,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add fluent https://fluent.github.io/helm-charts
 helm repo update
 
-kubectl create namespace monitoring --dry-run=client -o yaml | kubectl create -f -
+# kubectl create namespace monitoring --dry-run=client -o yaml | kubectl create -f -
 
 echo "Installing Prometheus..."
 helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
@@ -30,37 +30,37 @@ helm upgrade --install fluent-bit fluent/fluent-bit \
 echo "Observability stack installed successfully!"
 
 echo "Applying minimal Grafana dashboard (CPU graphs)..."
-kubectl create -n monitoring -f - <<'EOF'
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-ecommerce
-  labels:
-    grafana_dashboard: "1"
-data:
-  ecommerce-overview.json: |
-    {
-      "title": "Ecommerce Overview",
-      "schemaVersion": 36,
-      "version": 1,
-      "panels": [
-        {
-          "type": "graph",
-          "title": "API Gateway CPU",
-          "targets": [
-            { "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"api-gateway.*\"}[5m]))" }
-          ]
-        },
-        {
-          "type": "graph",
-          "title": "Activity Service CPU",
-          "targets": [
-            { "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"activity-service.*\"}[5m]))" }
-          ]
-        }
-      ]
-    }
-EOF
+# kubectl create -n monitoring -f - <<'EOF'
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: grafana-dashboard-ecommerce
+#   labels:
+#     grafana_dashboard: "1"
+# data:
+#   ecommerce-overview.json: |
+#     {
+#       "title": "Ecommerce Overview",
+#       "schemaVersion": 36,
+#       "version": 1,
+#       "panels": [
+#         {
+#           "type": "graph",
+#           "title": "API Gateway CPU",
+#           "targets": [
+#             { "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"api-gateway.*\"}[5m]))" }
+#           ]
+#         },
+#         {
+#           "type": "graph",
+#           "title": "Activity Service CPU",
+#           "targets": [
+#             { "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"activity-service.*\"}[5m]))" }
+#           ]
+#         }
+#       ]
+#     }
+# EOF
 
 echo "Access Grafana:"
 echo "  kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80"

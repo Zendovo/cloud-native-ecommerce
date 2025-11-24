@@ -85,92 +85,80 @@ resource "helm_release" "argocd" {
 }
 
 #############################################
-# Define ArgoCD Applications using argocd-apps chart
+# Define ArgoCD Applications using kubernetes_manifest
 #############################################
 
-# Values for argocd-apps Helm chart (Application CRs)
-locals {
-  argocd_apps_values = {
-    applications = [
-      {
-        name      = "cloud-native-ecommerce"
-        namespace = "argocd"
-        project   = "default"
-
-        source = {
-          repoURL        = var.git_repo_url
-          targetRevision = var.git_repo_revision
-          path           = "k8s"
-        }
-
-        destination = {
-          server    = "https://kubernetes.default.svc"
-          namespace = "ecommerce"
-        }
-
-        syncPolicy = {
-          automated = {
-            prune    = true
-            selfHeal = true
-          }
-          syncOptions = [
-            "CreateNamespace=true"
-          ]
-        }
-      },
-      {
-        name      = "ecommerce-observability"
-        namespace = "argocd"
-        project   = "default"
-
-        source = {
-          repoURL        = var.git_repo_url
-          targetRevision = var.git_repo_revision
-          path           = "observability"
-        }
-
-        destination = {
-          server    = "https://kubernetes.default.svc"
-          namespace = "monitoring"
-        }
-
-        syncPolicy = {
-          automated = {
-            prune    = true
-            selfHeal = true
-          }
-          syncOptions = [
-            "CreateNamespace=true"
-          ]
-        }
+resource "kubernetes_manifest" "argocd_app_ecommerce" {
+  manifest = {
+    "apiVersion" = "argoproj.io/v1alpha1"
+    "kind"       = "Application"
+    "metadata" = {
+      "name"      = "cloud-native-ecommerce"
+      "namespace" = kubernetes_namespace.argocd.metadata[0].name
+    }
+    "spec" = {
+      "destination" = {
+        "namespace" = "ecommerce"
+        "server"    = "https://kubernetes.default.svc"
       }
-    ]
+      "project" = "default"
+      "source" = {
+        "path"           = "k8s"
+        "repoURL"        = var.git_repo_url
+        "targetRevision" = var.git_repo_revision
+      }
+      "syncPolicy" = {
+        "automated" = {
+          "prune"    = true
+          "selfHeal" = true
+        }
+        "syncOptions" = [
+          "CreateNamespace=true",
+        ]
+      }
+    }
   }
-}
-
-resource "helm_release" "argocd_apps" {
-  name       = "argocd-apps"
-  namespace  = kubernetes_namespace.argocd.metadata[0].name
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argocd-apps"
-
-  # Optionally pin a version (uncomment and set a known good version)
-  # version = "1.6.2"
-
-  values = [
-    yamlencode(local.argocd_apps_values)
-  ]
 
   depends_on = [
     helm_release.argocd
   ]
 }
 
-#############################################
-# Notes:
-# - The Helm and Kubernetes providers must be configured to target the EKS cluster.
-#   This is typically done by reading the aws_eks_cluster and aws_eks_cluster_auth
-#   data sources and wiring the provider host/CA/token accordingly.
-# - Edit var.git_repo_url to point at your Git repository containing 'k8s' and 'observability' dirs.
-# - ArgoCD server is exposed via a LoadBalancer for a public URL.
-#############################################
+resource "kubernetes_manifest" "argocd_app_observability" {
+  manifest = {
+    "apiVersion" = "argoproj.io/v1alpha1"
+    "kind"       = "Application"
+    "metadata" = {
+      "name"      = "ecommerce-observability"
+      "namespace" = kubernetes_namespace.argocd.metadata[0].name
+    }
+    "spec" = {
+      "destination" = {
+        "namespace" = "monitoring"
+        "server"    = "https://kubernetes.default.svc"
+      }
+      "project" = "default"
+      "source" = {
+        "path"           = "observability"
+        "repoURL"        = var.git_repo_url
+        "targetRevision" = var.git_repo_revision
+      }
+      "syncPolicy" = {
+        "automated" = {
+          "prune"    = true
+          "selfHeal" = true
+        }
+        "syncOptions" = [
+          "CreateNamespace=true",
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd
+  ]
+}
+
+
+

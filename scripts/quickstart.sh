@@ -16,16 +16,19 @@ command -v helm >/dev/null 2>&1 || { echo -e "${RED}Error: helm not found${NC}";
 
 echo -e "${GREEN} All prerequisites installed${NC}\n"
 
-read -p "Enter AWS Region [us-east-1]: " AWS_REGION
+# read -p "Enter AWS Region [us-east-1]: " AWS_REGION
 AWS_REGION=${AWS_REGION:-us-east-1}
 
-read -p "Enter GCP Project ID: " GCP_PROJECT_ID
-if [ -z "$GCP_PROJECT_ID" ]; then
-    echo -e "${RED}Error: GCP Project ID is required${NC}"
-    exit 1
-fi
+AWS_PROFILE="kirana_profile"
 
-read -p "Enter GCP Region [us-central1]: " GCP_REGION
+# read -p "Enter GCP Project ID: " GCP_PROJECT_ID
+# if [ -z "$GCP_PROJECT_ID" ]; then
+#     echo -e "${RED}Error: GCP Project ID is required${NC}"
+#     exit 1
+# fi
+GCP_PROJECT_ID="sunlit-alloy-479104-p5"
+
+# read -p "Enter GCP Region [us-central1]: " GCP_REGION
 GCP_REGION=${GCP_REGION:-us-central1}
 
 read -sp "Enter RDS Database Password: " DB_PASSWORD
@@ -81,7 +84,7 @@ echo -e "${GREEN}✓ GCP Infrastructure deployed${NC}"
 cd ../..
 
 echo -e "\n${YELLOW}Step 3/10: Configuring kubectl...${NC}"
-aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION}
+aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION} --profile ${AWS_PROFILE}
 echo -e "${GREEN}✓ kubectl configured${NC}"
 
 echo -e "\n${YELLOW}Step 4/10: Updating Kubernetes manifests...${NC}"
@@ -137,19 +140,22 @@ if command -v mvn >/dev/null 2>&1; then
     echo "Uploading to GCS..."
     gsutil cp target/analytics-job-*.jar gs://${FLINK_BUCKET}/analytics-job.jar
 
-    echo "Submitting to Dataproc with environment variables..."
-    echo "  Kafka Brokers: ${KAFKA_BROKERS}"
-    echo "  DynamoDB Table: ${DYNAMODB_TABLE}"
-    echo "  AWS Region: ${AWS_REGION}"
+    echo "Submitting to Dataproc..."
+    # gcloud dataproc jobs submit flink \
+    #     --project=${GCP_PROJECT_ID} \
+    #     --cluster=${DATAPROC_CLUSTER} \
+    #     --region=${GCP_REGION} \
+    #     --jar=gs://${FLINK_BUCKET}/analytics-job.jar \
+    #     --properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" \
+    #     && echo -e "${GREEN}✓ Flink job submitted successfully${NC}" \
+    # || echo "Flink job submission failed (optional)"
 
-    gcloud dataproc jobs submit flink \
-        --cluster=${DATAPROC_CLUSTER} \
-        --region=${GCP_REGION} \
-        --jar=gs://${FLINK_BUCKET}/analytics-job.jar \
-        --class=com.ecommerce.analytics.AnalyticsJob \
-        --properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" \
-        && echo -e "${GREEN}✓ Flink job submitted successfully${NC}" \
-        || echo -e "${YELLOW}⚠ Flink job submission failed (optional)${NC}"
+    echo "gcloud dataproc jobs submit flink "
+        echo "--project=${GCP_PROJECT_ID} "
+        echo "--cluster=${DATAPROC_CLUSTER} "
+        echo "--region=${GCP_REGION} "
+        echo "--jar=gs://${FLINK_BUCKET}/analytics-job.jar "
+        echo "--properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" "
 else
     echo -e "${YELLOW}Maven not found, skipping Flink job build${NC}"
 fi
@@ -160,7 +166,7 @@ echo -e "${GREEN}✓ Flink job deployment attempted${NC}"
 echo -e "\n${YELLOW}Step 10/10: Retrieving access information...${NC}"
 
 echo "Waiting for LoadBalancer to be assigned..."
-sleep 30
+# sleep 30
 
 API_GATEWAY_URL=$(kubectl get svc api-gateway -n ecommerce -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
 

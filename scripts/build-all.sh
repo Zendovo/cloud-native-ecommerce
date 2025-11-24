@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile default 2>/dev/null || echo "")
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile kirana_profile 2>/dev/null || echo "")
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 SERVICES=(
@@ -34,14 +34,14 @@ echo ""
 echo -e "${YELLOW}Creating ECR repositories...${NC}"
 for service in "${SERVICES[@]}"; do
     echo "Creating repository for ${service}..."
-    aws ecr describe-repositories --repository-names ${service} --region ${AWS_REGION} >/dev/null 2>&1 || \
-        aws ecr create-repository --repository-name ${service} --region ${AWS_REGION} >/dev/null
+    aws ecr describe-repositories --repository-names ${service} --region ${AWS_REGION} --profile kirana_profile >/dev/null 2>&1 || \
+        aws ecr create-repository --repository-name ${service} --region ${AWS_REGION} --profile kirana_profile >/dev/null
     echo -e "${GREEN}✓${NC} ${service} repository ready"
 done
 echo ""
 
 echo -e "${YELLOW}Logging into ECR...${NC}"
-aws ecr get-login-password --region ${AWS_REGION} | \
+aws ecr get-login-password --region ${AWS_REGION} --profile kirana_profile | \
     docker login --username AWS --password-stdin ${ECR_REGISTRY}
 echo -e "${GREEN}✓${NC} Logged into ECR"
 echo ""
