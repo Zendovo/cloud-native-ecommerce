@@ -10,7 +10,7 @@ metadata:
   namespace: ecommerce
 data:
   db_host: "ecommerce-db.c4dka8qo2eqj.us-east-1.rds.amazonaws.com"
-  kafka_bootstrap_servers: "b-1.ecommercekafka.meu5px.c24.kafka.us-east-1.amazonaws.com:9092,b-2.ecommercekafka.meu5px.c24.kafka.us-east-1.amazonaws.com:9092"
+  kafka_bootstrap_servers: "b-1.ecommercekafka.meu5px.c24.kafka.us-east-1.amazonaws.com:9098,b-2.ecommercekafka.meu5px.c24.kafka.us-east-1.amazonaws.com:9098"
   dynamodb_table: "ecommerce-analytics"
   aws_region: "us-east-1"
 ---

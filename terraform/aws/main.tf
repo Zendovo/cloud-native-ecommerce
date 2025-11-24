@@ -247,6 +247,14 @@ resource "aws_security_group" "msk" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 9098
+    to_port     = 9098
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -287,6 +295,12 @@ resource "aws_msk_cluster" "main" {
     encryption_in_transit {
       client_broker = "TLS"
       in_cluster    = true
+    }
+  }
+
+  client_authentication {
+    sasl {
+      iam = true
     }
   }
 }

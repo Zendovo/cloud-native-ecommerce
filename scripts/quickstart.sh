@@ -38,6 +38,7 @@ db_password = "${DB_PASSWORD}"
 EOF
 
 terraform init
+terraform apply -auto-approve
 
 RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
 KAFKA_BROKERS=$(terraform output -raw msk_bootstrap_brokers)
@@ -87,7 +88,7 @@ kubectl get nodes || true
 echo -e "\n${YELLOW}Phase 2/4: Preparing Kubernetes manifests...${NC}"
 
 sed -i.bak "s|ecommerce-db.xxxxx.us-east-1.rds.amazonaws.com|${RDS_ENDPOINT}|g" k8s/namespace-config.yaml
-sed -i.bak "s|b-1.ecommerce-kafka.xxxxx.*amazonaws.com:9092.*|${KAFKA_BROKERS}\"|g" k8s/namespace-config.yaml
+sed -i.bak "s|b-1.ecommerce-kafka.xxxxx.*amazonaws.com:9098.*|${KAFKA_BROKERS}\"|g" k8s/namespace-config.yaml
 
 DB_PASSWORD_B64=$(echo -n "${DB_PASSWORD}" | base64)
 sed -i.bak "s|cGFzc3dvcmQxMjM=|${DB_PASSWORD_B64}|g" k8s/namespace-config.yaml

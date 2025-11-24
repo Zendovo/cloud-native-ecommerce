@@ -12,10 +12,10 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --pro
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 SERVICES=(
-    "api-gateway"
-    "customer-service"
-    "product-catalog"
-    "order-service"
+    # "api-gateway"
+    # "customer-service"
+    # "product-catalog"
+    # "order-service"
     "activity-service"
 )
 
@@ -45,8 +45,11 @@ echo ""
 for service in "${SERVICES[@]}"; do
     echo -e "${YELLOW}Building ${service}...${NC}"
     cd microservices/${service}
-    
-    docker build -t ${service}:latest . -q
+
+    echo "  Building Docker image for linux/amd64..."
+    docker build --platform linux/amd64 -t ${service}:latest . -q
+
+    echo "  Tagging image..."
     docker tag ${service}:latest ${ECR_REGISTRY}/${service}:latest
     docker push ${ECR_REGISTRY}/${service}:latest -q
     

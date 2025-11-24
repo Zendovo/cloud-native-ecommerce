@@ -28,13 +28,13 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.products.bucket
 }
 
-output "msk_bootstrap_brokers" {
-  description = "MSK Kafka bootstrap brokers (private)"
-  value       = aws_msk_cluster.main.bootstrap_brokers
+output "msk_bootstrap_brokers_tls" {
+  description = "MSK Kafka bootstrap brokers (private TLS)"
+  value       = aws_msk_cluster.main.bootstrap_brokers_tls
 }
 
-output "msk_bootstrap_brokers_public" {
-  description = "MSK Kafka public bootstrap brokers"
+output "msk_bootstrap_brokers_public_iam" {
+  description = "MSK Kafka public bootstrap brokers (TLS + IAM auth)"
   value       = aws_msk_cluster.main.bootstrap_brokers_public_sasl_iam
 }
 

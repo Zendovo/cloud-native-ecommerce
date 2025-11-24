@@ -60,12 +60,26 @@ public class AnalyticsJob {
             StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(2);
 
+        // Configure Kafka properties for AWS MSK IAM authentication
+        Properties kafkaProps = new Properties();
+        kafkaProps.setProperty("security.protocol", "SASL_SSL");
+        kafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");
+        kafkaProps.setProperty(
+            "sasl.jaas.config",
+            "software.amazon.msk.auth.iam.IAMLoginModule required;"
+        );
+        kafkaProps.setProperty(
+            "sasl.client.callback.handler.class",
+            "software.amazon.msk.auth.iam.IAMClientCallbackHandler"
+        );
+
         KafkaSource<String> source = KafkaSource.<String>builder()
             .setBootstrapServers(kafkaBootstrapServers)
             .setTopics(inputTopic)
             .setGroupId("flink-analytics-consumer")
             .setStartingOffsets(OffsetsInitializer.latest())
             .setValueOnlyDeserializer(new SimpleStringSchema())
+            .setProperties(kafkaProps)
             .build();
 
         DataStream<String> rawEvents = env.fromSource(
@@ -90,14 +104,29 @@ public class AnalyticsJob {
             .keyBy(event -> event.get("product_id").asText())
             .window(TumblingEventTimeWindows.of(Time.minutes(1)))
             .aggregate(new UniqueUserCountAggregator())
-            .map(
-                new DynamoDBWriterMap(
+            .map(result -> {
+                writeToDynamoDB(
+                    result,
                     dynamoTableName,
                     awsRegion,
                     awsAccessKey,
                     awsSecretKey
-                )
-            );
+                );
+                return objectMapper.writeValueAsString(result);
+            });
+
+        // Configure Kafka properties for sink with IAM authentication
+        Properties sinkKafkaProps = new Properties();
+        sinkKafkaProps.setProperty("security.protocol", "SASL_SSL");
+        sinkKafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");
+        sinkKafkaProps.setProperty(
+            "sasl.jaas.config",
+            "software.amazon.msk.auth.iam.IAMLoginModule required;"
+        );
+        sinkKafkaProps.setProperty(
+            "sasl.client.callback.handler.class",
+            "software.amazon.msk.auth.iam.IAMClientCallbackHandler"
+        );
 
         KafkaSink<String> sink = KafkaSink.<String>builder()
             .setBootstrapServers(kafkaBootstrapServers)
@@ -108,6 +137,7 @@ public class AnalyticsJob {
                     .build()
             )
             .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
+            .setKafkaProducerConfig(sinkKafkaProps)
             .build();
 
         aggregatedResults.sinkTo(sink);
@@ -115,35 +145,15 @@ public class AnalyticsJob {
         env.execute("E-Commerce Analytics Job");
     }
 
-    public static class DynamoDBWriterMap
-        extends org.apache.flink.api.common.functions.RichMapFunction<
-            AnalyticsResult,
-            String
-        > {
-
-        private final String tableName;
-        private final String region;
-        private final String accessKey;
-        private final String secretKey;
-        private DynamoDbClient dynamoClient;
-
-        public DynamoDBWriterMap(
-            String tableName,
-            String region,
-            String accessKey,
-            String secretKey
-        ) {
-            this.tableName = tableName;
-            this.region = region;
-            this.accessKey = accessKey;
-            this.secretKey = secretKey;
-        }
-
-        @Override
-        public void open(
-            org.apache.flink.configuration.Configuration parameters
-        ) throws Exception {
-            dynamoClient = DynamoDbClient.builder()
+    private static void writeToDynamoDB(
+        AnalyticsResult result,
+        String tableName,
+        String region,
+        String accessKey,
+        String secretKey
+    ) {
+        try {
+            DynamoDbClient dynamoClient = DynamoDbClient.builder()
                 .region(Region.of(region))
                 .credentialsProvider(
                     StaticCredentialsProvider.create(
@@ -151,10 +161,7 @@ public class AnalyticsJob {
                     )
                 )
                 .build();
-        }
 
-        @Override
-        public String map(AnalyticsResult result) throws Exception {
             Map<String, AttributeValue> item = new HashMap<>();
             item.put(
                 "product_id",
@@ -181,15 +188,9 @@ public class AnalyticsJob {
                 .build();
 
             dynamoClient.putItem(request);
-
-            return objectMapper.writeValueAsString(result);
-        }
-
-        @Override
-        public void close() throws Exception {
-            if (dynamoClient != null) {
-                dynamoClient.close();
-            }
+            dynamoClient.close();
+        } catch (Exception e) {
+            System.err.println("Error writing to DynamoDB: " + e.getMessage());
         }
     }
 
