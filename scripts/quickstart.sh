@@ -14,21 +14,11 @@ command -v kubectl >/dev/null 2>&1 || { echo -e "${RED}Error: kubectl not found$
 command -v docker >/dev/null 2>&1 || { echo -e "${RED}Error: docker not found${NC}"; exit 1; }
 command -v helm >/dev/null 2>&1 || { echo -e "${RED}Error: helm not found${NC}"; exit 1; }
 
-echo -e "${GREEN} All prerequisites installed${NC}\n"
+echo -e "${GREEN}All prerequisites installed${NC}\n"
 
-# read -p "Enter AWS Region [us-east-1]: " AWS_REGION
 AWS_REGION=${AWS_REGION:-us-east-1}
-
 AWS_PROFILE="kirana_profile"
-
-# read -p "Enter GCP Project ID: " GCP_PROJECT_ID
-# if [ -z "$GCP_PROJECT_ID" ]; then
-#     echo -e "${RED}Error: GCP Project ID is required${NC}"
-#     exit 1
-# fi
 GCP_PROJECT_ID="sunlit-alloy-479104-p5"
-
-# read -p "Enter GCP Region [us-central1]: " GCP_REGION
 GCP_REGION=${GCP_REGION:-us-central1}
 
 read -sp "Enter RDS Database Password: " DB_PASSWORD
@@ -38,7 +28,7 @@ if [ -z "$DB_PASSWORD" ]; then
     exit 1
 fi
 
-echo -e "\n${YELLOW}Phase 1 / Step 1: Deploying AWS core infrastructure (VPC, EKS, RDS, MSK, S3, DynamoDB)...${NC}"
+echo -e "\n${YELLOW}Phase 1/1: Deploying AWS infrastructure...${NC}"
 cd terraform/aws
 
 cat > terraform.tfvars <<EOF
@@ -48,25 +38,19 @@ db_password = "${DB_PASSWORD}"
 EOF
 
 terraform init
-# terraform apply -auto-approve
 
 RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
 KAFKA_BROKERS=$(terraform output -raw msk_bootstrap_brokers)
 DYNAMODB_TABLE=$(terraform output -raw dynamodb_table_name)
 S3_BUCKET=$(terraform output -raw s3_bucket_name)
 EKS_CLUSTER=$(terraform output -raw eks_cluster_name)
-echo "${S3_BUCKET}"
+
 echo -e "${GREEN}✓ AWS Infrastructure deployed${NC}"
 cd ../..
 
-echo -e "\n${YELLOW}Phase 1 / Step 2: Deploying GCP analytics infrastructure (Dataproc + buckets)...${NC}"
+echo -e "\n${YELLOW}Phase 1/2: Deploying GCP infrastructure...${NC}"
 cd terraform/gcp
 
-echo "Is this running?"
-# AWS_ACCESS_KEY=$(aws configure get aws_access_key_id)
-# AWS_SECRET_KEY=$(aws configure get aws_secret_access_key)
-
-echo "Is this running?"
 cat > terraform.tfvars <<EOF
 gcp_project_id = "${GCP_PROJECT_ID}"
 gcp_region = "${GCP_REGION}"
@@ -76,7 +60,6 @@ aws_secret_access_key = "${AWS_SECRET_KEY}"
 kafka_bootstrap_servers = "${KAFKA_BROKERS}"
 EOF
 
-echo "Is this running?"
 terraform init
 terraform apply -auto-approve
 
@@ -86,23 +69,22 @@ FLINK_BUCKET=$(terraform output -raw flink_jobs_bucket)
 echo -e "${GREEN}✓ GCP Infrastructure deployed${NC}"
 cd ../..
 
-echo -e "\n${YELLOW}Phase 1 / Step 3: Configuring kubectl and waiting for EKS control plane & nodes...${NC}"
+echo -e "\n${YELLOW}Phase 2/3: Configuring kubectl and waiting for EKS nodes...${NC}"
 aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION} --profile ${AWS_PROFILE}
-echo -e "${GREEN}✓ kubectl configured${NC}"
-echo -e "${YELLOW}Waiting for worker nodes to become Ready (timeout 8m)...${NC}"
+
 ATTEMPTS=0
 until kubectl get nodes 2>/dev/null | grep -q ' Ready'; do
   ATTEMPTS=$((ATTEMPTS+1))
   if [ $ATTEMPTS -ge 32 ]; then
-    echo -e "${RED}EKS nodes did not become Ready in time. You can re-run this script once nodes appear.${NC}"
+    echo -e "${RED}EKS nodes did not become Ready in time${NC}"
     break
   fi
-  echo "  Nodes not ready yet... retry ${ATTEMPTS}/32"
+  echo "Waiting for nodes... ${ATTEMPTS}/32"
   sleep 15
 done
 kubectl get nodes || true
 
-echo -e "\n${YELLOW}Phase 1 / Step 4: Preparing Kubernetes manifests with real endpoints & registry...${NC}"
+echo -e "\n${YELLOW}Phase 2/4: Preparing Kubernetes manifests...${NC}"
 
 sed -i.bak "s|ecommerce-db.xxxxx.us-east-1.rds.amazonaws.com|${RDS_ENDPOINT}|g" k8s/namespace-config.yaml
 sed -i.bak "s|b-1.ecommerce-kafka.xxxxx.*amazonaws.com:9092.*|${KAFKA_BROKERS}\"|g" k8s/namespace-config.yaml
@@ -117,105 +99,62 @@ for file in k8s/*.yaml; do
     sed -i.bak "s|<YOUR_ECR_REGISTRY>|${ECR_REGISTRY}|g" ${file}
 done
 
-echo -e "${GREEN}✓ Kubernetes manifests updated${NC}"
+echo -e "${GREEN}✓ Manifests updated${NC}"
 
-echo -e "\n${YELLOW}Phase 1 / Step 5: Building and pushing Docker images to ECR...${NC}"
+echo -e "\n${YELLOW}Phase 2/5: Building and pushing Docker images...${NC}"
 chmod +x scripts/build-all.sh
 ./scripts/build-all.sh
 
-echo -e "${GREEN}✓ Docker images built and pushed${NC}"
-
-echo -e "\n${YELLOW}Phase 2 / Step 1: Installing ArgoCD (GitOps) via Terraform targeted apply...${NC}"
+echo -e "\n${YELLOW}Phase 3/6: Installing ArgoCD...${NC}"
 cd terraform/aws
-echo -e "${YELLOW}Applying helm releases for ArgoCD...${NC}"
 terraform apply -auto-approve -target=helm_release.argocd -target=helm_release.argocd_apps
-echo -e "${GREEN}✓ ArgoCD helm releases applied${NC}"
 cd ../..
-echo -e "${YELLOW}Waiting for ArgoCD server pod to be Ready...${NC}"
-kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || echo -e "${YELLOW}ArgoCD server not ready yet (continue)${NC}"
+
+kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || echo -e "${YELLOW}ArgoCD server not ready yet${NC}"
 ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
-echo "To retrieve initial admin password manually if empty:"
-echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 
-echo -e "\n${YELLOW}Phase 2 / Step 2: Application deployment via ArgoCD sync (passive, no kubectl apply)...${NC}"
-echo "Skipping direct manual deployment. ArgoCD will sync the repository and create/update all Kubernetes objects."
-echo "You can monitor sync status:"
-echo "  kubectl get applications -n argocd"
-echo "  kubectl get pods -n ecommerce"
+echo -e "\n${YELLOW}Phase 3/7: ArgoCD deployment (GitOps)...${NC}"
+echo "ArgoCD will sync the repository and deploy applications"
+echo "Monitor: kubectl get applications -n argocd"
 
-echo -e "\n${YELLOW}Step 8/10: Deploying observability stack...${NC}"
+echo -e "\n${YELLOW}Phase 3/8: Deploying observability stack...${NC}"
 cd observability
 chmod +x install.sh
 export GCP_PROJECT_ID=${GCP_PROJECT_ID}
 ./install.sh
 cd ..
 
-echo -e "${GREEN}✓ Observability stack deployed${NC}"
-
-echo -e "\n${YELLOW}Step 9/10: Deploying Flink analytics job...${NC}"
+echo -e "\n${YELLOW}Phase 3/9: Deploying Flink job...${NC}"
 cd flink
 
 if command -v mvn >/dev/null 2>&1; then
-    echo "Building Flink job..."
     mvn clean package
-
-    echo "Uploading to GCS..."
     gsutil cp target/analytics-job-*.jar gs://${FLINK_BUCKET}/analytics-job.jar
-
-    echo "Submitting to Dataproc..."
-    # gcloud dataproc jobs submit flink \
-    #     --project=${GCP_PROJECT_ID} \
-    #     --cluster=${DATAPROC_CLUSTER} \
-    #     --region=${GCP_REGION} \
-    #     --jar=gs://${FLINK_BUCKET}/analytics-job.jar \
-    #     --properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" \
-    #     && echo -e "${GREEN}✓ Flink job submitted successfully${NC}" \
-    # || echo "Flink job submission failed (optional)"
-
-    echo "gcloud dataproc jobs submit flink "
-        echo "--project=${GCP_PROJECT_ID} "
-        echo "--cluster=${DATAPROC_CLUSTER} "
-        echo "--region=${GCP_REGION} "
-        echo "--jar=gs://${FLINK_BUCKET}/analytics-job.jar "
-        echo "--properties="containerized.master.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.master.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.master.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.master.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.master.env.AWS_REGION=${AWS_REGION},containerized.master.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.master.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY},containerized.taskmanager.env.KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS},containerized.taskmanager.env.KAFKA_INPUT_TOPIC=ecom-raw-events,containerized.taskmanager.env.KAFKA_OUTPUT_TOPIC=ecom-analytics-results,containerized.taskmanager.env.DYNAMODB_TABLE=${DYNAMODB_TABLE},containerized.taskmanager.env.AWS_REGION=${AWS_REGION},containerized.taskmanager.env.AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY},containerized.taskmanager.env.AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}" "
+    echo "Flink job uploaded to GCS"
 else
-    echo -e "${YELLOW}Maven not found, skipping Flink job build${NC}"
+    echo -e "${YELLOW}Maven not found, skipping Flink job${NC}"
 fi
 
 cd ..
-echo -e "${GREEN}✓ Flink job deployment attempted${NC}"
 
-echo -e "\n${YELLOW}Step 10/10: Retrieving access information...${NC}"
-
-echo "Waiting for LoadBalancer to be assigned..."
-# sleep 30
+echo -e "\n${YELLOW}Retrieving access information...${NC}"
 
 API_GATEWAY_URL=$(kubectl get svc api-gateway -n ecommerce -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
 
-echo -e "\n${GREEN}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}           Deployment Complete!                             ${NC}"
-echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}\n"
+echo -e "\n${GREEN}Deployment Complete!${NC}\n"
 
 echo -e "${BLUE}Access Information:${NC}"
-echo -e "  API Gateway URL: http://${API_GATEWAY_URL}"
-echo -e "  ArgoCD UI: kubectl port-forward svc/argocd-server -n argocd 8080:443"
-echo -e "  ArgoCD Password: ${ARGOCD_PASSWORD}"
-echo -e "  Grafana: kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80"
-echo -e "  Grafana User: admin / admin123"
+echo "  API Gateway: http://${API_GATEWAY_URL}"
+echo "  ArgoCD: kubectl port-forward svc/argocd-server -n argocd 8080:443"
+echo "  ArgoCD Password: ${ARGOCD_PASSWORD}"
+echo "  Grafana: kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80"
 echo ""
 
-echo -e "${BLUE}Infrastructure Details:${NC}"
-echo -e "  EKS Cluster: ${EKS_CLUSTER}"
-echo -e "  RDS Endpoint: ${RDS_ENDPOINT}"
-echo -e "  DynamoDB Table: ${DYNAMODB_TABLE}"
-echo -e "  Dataproc Cluster: ${DATAPROC_CLUSTER}"
-echo ""
-
-echo -e "${BLUE}Next Steps:${NC}"
-echo -e "  1. Test API: curl http://${API_GATEWAY_URL}/products"
-echo -e "  2. Run load tests: cd load-testing && API_GATEWAY_URL=http://${API_GATEWAY_URL} k6 run load-test.js"
-echo -e "  3. Monitor HPA: watch kubectl get hpa -n ecommerce"
-echo -e "  4. View logs: kubectl logs -f -l app=api-gateway -n ecommerce"
+echo -e "${BLUE}Infrastructure:${NC}"
+echo "  EKS Cluster: ${EKS_CLUSTER}"
+echo "  RDS Endpoint: ${RDS_ENDPOINT}"
+echo "  DynamoDB Table: ${DYNAMODB_TABLE}"
+echo "  Dataproc Cluster: ${DATAPROC_CLUSTER}"
 echo ""
 
 cat > .deployment-info <<EOF
@@ -231,4 +170,4 @@ GCP_PROJECT_ID=${GCP_PROJECT_ID}
 GCP_REGION=${GCP_REGION}
 EOF
 
-echo -e "${GREEN}Deployment information saved to .deployment-info${NC}\n"
+echo -e "${GREEN}Deployment info saved to .deployment-info${NC}"
