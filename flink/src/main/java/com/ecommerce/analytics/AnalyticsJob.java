@@ -103,14 +103,16 @@ public class AnalyticsJob {
             .keyBy(event -> event.get("product_id").asText())
             .window(TumblingEventTimeWindows.of(Time.minutes(1)))
             .aggregate(new UniqueUserCountAggregator())
-            .map(
-                new DynamoDBWriterMap(
+            .map(result -> {
+                writeToDynamoDB(
+                    result,
                     dynamoTableName,
                     awsRegion,
                     awsAccessKey,
                     awsSecretKey
-                )
-            );
+                );
+                return objectMapper.writeValueAsString(result);
+            });
 
         Properties sinkKafkaProps = new Properties();
         sinkKafkaProps.setProperty("security.protocol", "SASL_SSL");
@@ -141,35 +143,15 @@ public class AnalyticsJob {
         env.execute("E-Commerce Analytics Job");
     }
 
-    public static class DynamoDBWriterMap
-        extends org.apache.flink.api.common.functions.RichMapFunction<
-            AnalyticsResult,
-            String
-        > {
-
-        private final String tableName;
-        private final String region;
-        private final String accessKey;
-        private final String secretKey;
-        private DynamoDbClient dynamoClient;
-
-        public DynamoDBWriterMap(
-            String tableName,
-            String region,
-            String accessKey,
-            String secretKey
-        ) {
-            this.tableName = tableName;
-            this.region = region;
-            this.accessKey = accessKey;
-            this.secretKey = secretKey;
-        }
-
-        @Override
-        public void open(
-            org.apache.flink.configuration.Configuration parameters
-        ) throws Exception {
-            dynamoClient = DynamoDbClient.builder()
+    private static void writeToDynamoDB(
+        AnalyticsResult result,
+        String tableName,
+        String region,
+        String accessKey,
+        String secretKey
+    ) {
+        try {
+            DynamoDbClient dynamoClient = DynamoDbClient.builder()
                 .region(Region.of(region))
                 .credentialsProvider(
                     StaticCredentialsProvider.create(
@@ -177,10 +159,7 @@ public class AnalyticsJob {
                     )
                 )
                 .build();
-        }
 
-        @Override
-        public String map(AnalyticsResult result) throws Exception {
             Map<String, AttributeValue> item = new HashMap<>();
             item.put(
                 "product_id",
@@ -207,15 +186,9 @@ public class AnalyticsJob {
                 .build();
 
             dynamoClient.putItem(request);
-
-            return objectMapper.writeValueAsString(result);
-        }
-
-        @Override
-        public void close() throws Exception {
-            if (dynamoClient != null) {
-                dynamoClient.close();
-            }
+            dynamoClient.close();
+        } catch (Exception e) {
+            System.err.println("Error writing to DynamoDB: " + e.getMessage());
         }
     }
 
