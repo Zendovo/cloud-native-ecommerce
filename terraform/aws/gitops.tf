@@ -98,9 +98,9 @@ resource "helm_release" "argocd_apps" {
     yamlencode({
       applications = [
         {
-          name      = "cloud-native-ecommerce"
-          namespace = "argocd"
-          project   = "default"
+          name        = "cloud-native-ecommerce"
+          finalizers  = ["resources-finalizer.argocd.argoproj.io"]
+          project     = "default"
           source = {
             repoURL        = var.git_repo_url
             targetRevision = var.git_repo_revision
@@ -119,9 +119,9 @@ resource "helm_release" "argocd_apps" {
           }
         },
         {
-          name      = "ecommerce-observability"
-          namespace = "argocd"
-          project   = "default"
+          name        = "ecommerce-observability"
+          finalizers  = ["resources-finalizer.argocd.argoproj.io"]
+          project     = "default"
           source = {
             repoURL        = var.git_repo_url
             targetRevision = var.git_repo_revision

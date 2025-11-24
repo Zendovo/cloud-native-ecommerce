@@ -10,7 +10,7 @@ rm -rf package/
 mkdir -p package
 
 echo "Installing dependencies..."
-pip install requests -t package/ --quiet
+pip3 install requests -t package/ --quiet
 
 cp index.py package/
 

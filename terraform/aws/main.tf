@@ -273,7 +273,7 @@ resource "aws_msk_cluster" "main" {
 
     connectivity_info {
       public_access {
-        type = "SERVICE_PROVIDED_EIPS"
+        type = "DISABLED"
       }
     }
   }
@@ -285,8 +285,8 @@ resource "aws_msk_cluster" "main" {
 
   encryption_info {
     encryption_in_transit {
-      client_broker = "PLAINTEXT"
-      in_cluster    = false
+      client_broker = "TLS"
+      in_cluster    = true
     }
   }
 }
