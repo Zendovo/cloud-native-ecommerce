@@ -48,23 +48,25 @@ db_password = "${DB_PASSWORD}"
 EOF
 
 terraform init
-terraform apply -auto-approve
+# terraform apply -auto-approve
 
 RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
 KAFKA_BROKERS=$(terraform output -raw msk_bootstrap_brokers)
 DYNAMODB_TABLE=$(terraform output -raw dynamodb_table_name)
 S3_BUCKET=$(terraform output -raw s3_bucket_name)
 EKS_CLUSTER=$(terraform output -raw eks_cluster_name)
-
+echo "${S3_BUCKET}"
 echo -e "${GREEN}✓ AWS Infrastructure deployed${NC}"
 cd ../..
 
 echo -e "\n${YELLOW}Phase 1 / Step 2: Deploying GCP analytics infrastructure (Dataproc + buckets)...${NC}"
 cd terraform/gcp
 
-AWS_ACCESS_KEY=$(aws configure get aws_access_key_id)
-AWS_SECRET_KEY=$(aws configure get aws_secret_access_key)
+echo "Is this running?"
+# AWS_ACCESS_KEY=$(aws configure get aws_access_key_id)
+# AWS_SECRET_KEY=$(aws configure get aws_secret_access_key)
 
+echo "Is this running?"
 cat > terraform.tfvars <<EOF
 gcp_project_id = "${GCP_PROJECT_ID}"
 gcp_region = "${GCP_REGION}"
@@ -74,6 +76,7 @@ aws_secret_access_key = "${AWS_SECRET_KEY}"
 kafka_bootstrap_servers = "${KAFKA_BROKERS}"
 EOF
 
+echo "Is this running?"
 terraform init
 terraform apply -auto-approve
 
