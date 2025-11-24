@@ -60,12 +60,25 @@ public class AnalyticsJob {
             StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(2);
 
+        Properties kafkaProps = new Properties();
+        kafkaProps.setProperty("security.protocol", "SASL_SSL");
+        kafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");
+        kafkaProps.setProperty(
+            "sasl.jaas.config",
+            "software.amazon.msk.auth.iam.IAMLoginModule required;"
+        );
+        kafkaProps.setProperty(
+            "sasl.client.callback.handler.class",
+            "software.amazon.msk.auth.iam.IAMClientCallbackHandler"
+        );
+
         KafkaSource<String> source = KafkaSource.<String>builder()
             .setBootstrapServers(kafkaBootstrapServers)
             .setTopics(inputTopic)
             .setGroupId("flink-analytics-consumer")
             .setStartingOffsets(OffsetsInitializer.latest())
             .setValueOnlyDeserializer(new SimpleStringSchema())
+            .setProperties(kafkaProps)
             .build();
 
         DataStream<String> rawEvents = env.fromSource(
@@ -99,6 +112,18 @@ public class AnalyticsJob {
                 )
             );
 
+        Properties sinkKafkaProps = new Properties();
+        sinkKafkaProps.setProperty("security.protocol", "SASL_SSL");
+        sinkKafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");
+        sinkKafkaProps.setProperty(
+            "sasl.jaas.config",
+            "software.amazon.msk.auth.iam.IAMLoginModule required;"
+        );
+        sinkKafkaProps.setProperty(
+            "sasl.client.callback.handler.class",
+            "software.amazon.msk.auth.iam.IAMClientCallbackHandler"
+        );
+
         KafkaSink<String> sink = KafkaSink.<String>builder()
             .setBootstrapServers(kafkaBootstrapServers)
             .setRecordSerializer(
@@ -108,6 +133,7 @@ public class AnalyticsJob {
                     .build()
             )
             .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
+            .setKafkaProducerConfig(sinkKafkaProps)
             .build();
 
         aggregatedResults.sinkTo(sink);
