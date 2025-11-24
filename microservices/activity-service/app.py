@@ -6,6 +6,7 @@ from datetime import datetime
 from aws_msk_iam_sasl_signer import MSKAuthTokenProvider
 from flask import Flask, jsonify, request
 from kafka import KafkaProducer
+from kafka.sasl.oauth import AbstractTokenProvider
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -22,10 +23,15 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 producer = None
 
 
-def oauth_cb():
-    """Generate AWS MSK IAM authentication token"""
-    token, _ = MSKAuthTokenProvider.generate_auth_token(AWS_REGION)
-    return token
+class MSKTokenProvider(AbstractTokenProvider):
+    """AWS MSK IAM Token Provider compatible with kafka-python"""
+
+    def __init__(self, region):
+        self.region = region
+
+    def token(self):
+        token, _ = MSKAuthTokenProvider.generate_auth_token(self.region)
+        return token
 
 
 def get_kafka_producer():
@@ -33,12 +39,15 @@ def get_kafka_producer():
     if producer is None:
         try:
             logger.info(f"Attempting to connect to Kafka at: {KAFKA_BOOTSTRAP_SERVERS}")
+
+            token_provider = MSKTokenProvider(region=AWS_REGION)
+
             producer = KafkaProducer(
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS.split(","),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 security_protocol="SASL_SSL",
                 sasl_mechanism="OAUTHBEARER",
-                sasl_oauth_token_provider=oauth_cb,
+                sasl_oauth_token_provider=token_provider,
                 acks="all",
                 retries=5,
                 max_block_ms=60000,
