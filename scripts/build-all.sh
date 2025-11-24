@@ -51,8 +51,8 @@ for service in "${SERVICES[@]}"; do
 
     cd microservices/${service}
 
-    echo "  Building Docker image..."
-    docker build -t ${service}:latest . -q
+    echo "  Building Docker image for linux/amd64..."
+    docker build --platform linux/amd64 -t ${service}:latest . -q
 
     echo "  Tagging image..."
     docker tag ${service}:latest ${ECR_REGISTRY}/${service}:latest

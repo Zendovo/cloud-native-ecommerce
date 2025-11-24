@@ -43,9 +43,11 @@ spec:
             - containerPort: 8080
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: b-1.ecommercekafka.e2v0sz.c24.kafka.us-east-1.amazonaws.com:9092
+              value: "b-1.ecommercekafka.b8t5fo.c24.kafka.us-east-1.amazonaws.com:9094"
             - name: KAFKA_TOPIC
               value: "ecom-raw-events"
+            - name: AWS_REGION
+              value: "us-east-1"
           resources:
             requests:
               cpu: 100m

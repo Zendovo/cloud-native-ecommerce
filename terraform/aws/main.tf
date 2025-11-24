@@ -289,6 +289,12 @@ resource "aws_msk_cluster" "main" {
       in_cluster    = true
     }
   }
+
+  client_authentication {
+    sasl {
+      iam = true
+    }
+  }
 }
 
 resource "aws_lambda_function" "product_import" {

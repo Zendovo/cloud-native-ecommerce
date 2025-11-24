@@ -60,6 +60,7 @@ public class AnalyticsJob {
             StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(2);
 
+        // Configure Kafka properties for AWS MSK IAM authentication
         Properties kafkaProps = new Properties();
         kafkaProps.setProperty("security.protocol", "SASL_SSL");
         kafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");
@@ -114,6 +115,7 @@ public class AnalyticsJob {
                 return objectMapper.writeValueAsString(result);
             });
 
+        // Configure Kafka properties for sink with IAM authentication
         Properties sinkKafkaProps = new Properties();
         sinkKafkaProps.setProperty("security.protocol", "SASL_SSL");
         sinkKafkaProps.setProperty("sasl.mechanism", "AWS_MSK_IAM");

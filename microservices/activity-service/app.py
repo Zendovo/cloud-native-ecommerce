@@ -2,8 +2,8 @@ import json
 import logging
 import os
 from datetime import datetime
-from sys import api_version
 
+from aws_msk_iam_sasl_signer import MSKAuthTokenProvider
 from flask import Flask, jsonify, request
 from kafka import KafkaProducer
 
@@ -17,24 +17,44 @@ metrics = PrometheusMetrics(app)
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "ecom-raw-events")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 producer = None
+
+
+def oauth_cb():
+    """Generate AWS MSK IAM authentication token"""
+    token, _ = MSKAuthTokenProvider.generate_auth_token(AWS_REGION)
+    return token
 
 
 def get_kafka_producer():
     global producer
     if producer is None:
         try:
+            logger.info(f"Attempting to connect to Kafka at: {KAFKA_BOOTSTRAP_SERVERS}")
             producer = KafkaProducer(
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS.split(","),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                security_protocol="SASL_SSL",
+                sasl_mechanism="OAUTHBEARER",
+                sasl_oauth_token_provider=oauth_cb,
                 acks="all",
-                api_version=(3,5,1),
-                retries=3,
+                retries=5,
+                max_block_ms=60000,
+                request_timeout_ms=30000,
+                api_version_auto_timeout_ms=10000,
+                reconnect_backoff_ms=500,
+                reconnect_backoff_max_ms=5000,
+                metadata_max_age_ms=300000,
+                connections_max_idle_ms=540000,
             )
-            logger.info(f"Kafka producer initialized: {KAFKA_BOOTSTRAP_SERVERS}")
+            logger.info(
+                f"Kafka producer initialized successfully with IAM auth: {KAFKA_BOOTSTRAP_SERVERS}"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize Kafka producer: {e}")
+            logger.error(f"Bootstrap servers: {KAFKA_BOOTSTRAP_SERVERS}")
             producer = None
     return producer
 

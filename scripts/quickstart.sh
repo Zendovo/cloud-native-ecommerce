@@ -48,7 +48,7 @@ db_password = "${DB_PASSWORD}"
 EOF
 
 terraform init
-# terraform apply -auto-approve
+terraform apply -auto-approve
 
 RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
 KAFKA_BROKERS=$(terraform output -raw msk_bootstrap_brokers)

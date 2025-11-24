@@ -28,7 +28,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "stat",
@@ -41,7 +41,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "gauge",
@@ -55,7 +55,7 @@ data:
               }
             ],
             "max": 100,
-            "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+            "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -69,7 +69,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -82,7 +82,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -95,7 +95,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -108,7 +108,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -121,7 +121,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         },
         {
           "type": "graph",
@@ -135,7 +135,7 @@ data:
               "refId": "A"
             }
           ],
-          "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" }
+          "datasource": "Prometheus"
         }
       ],
       "templating": {
@@ -143,7 +143,7 @@ data:
           {
             "name": "namespace",
             "type": "query",
-            "datasource": { "type": "prometheus", "uid": "PROMETHEUS_DS" },
+            "datasource": "Prometheus",
             "refresh": 2,
             "query": "label_values(kube_pod_info, namespace)",
             "current": {
